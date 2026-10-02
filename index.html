@@ -487,6 +487,18 @@ body.penmode #view [data-mk], body.penmode #view .stem, body.penmode #view .ctx,
 .q-deep p{line-height:1.7;margin:0 0 10px}
 .q-deep ul{margin:0 0 10px;padding-left:20px}
 .q-deep li{line-height:1.65;margin:0 0 5px}
+.fn-layer{position:absolute;left:0;top:0;width:100%;height:0;overflow:visible;z-index:6;pointer-events:none}
+.fn{position:absolute;pointer-events:auto;max-width:min(260px,calc(100vw - 24px));min-width:40px;background:#FFF4C2;color:#4A3900;border:1.5px solid #E2C55A;border-radius:8px;box-shadow:0 3px 10px rgba(0,0,0,.14);font-size:13.5px;line-height:1.45;font-style:normal;font-weight:400;cursor:pointer;user-select:text;-webkit-user-select:text}
+.fn-t{padding:5px 9px;white-space:pre-wrap;word-break:break-word;outline:none;min-height:1.45em}
+.fn.editing{cursor:text;border-color:#C9A21F;box-shadow:0 0 0 3px rgba(217,185,58,.25),0 3px 10px rgba(0,0,0,.14)}
+.fn.editing .fn-t{cursor:text}
+.fn-t:empty::before{content:"escreva…";color:#B9A15A}
+.fn-x{all:unset;position:absolute;top:-9px;right:-9px;width:20px;height:20px;border-radius:50%;background:#fff;border:1px solid #D9B93A;color:#8A6D00;font-size:14px;line-height:19px;text-align:center;cursor:pointer;display:none;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.fn.editing .fn-x,.fn:hover .fn-x{display:block}
+:root[data-theme="dark"] .fn{background:#3D3515;color:#F5E6A8;border-color:#7A6A28}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .fn{background:#3D3515;color:#F5E6A8;border-color:#7A6A28} }
+body.txtmode #view{cursor:text}
+body.txtmode #view .fn{cursor:pointer}
 .rv-cap{font-size:13px;color:var(--ink-2);margin-top:8px;line-height:1.5}
 .rv-cred{display:block;font-size:11px;color:var(--ink-3);margin-top:3px}
 .rv-cred a{color:inherit}
@@ -1943,7 +1955,7 @@ function markScope(el){ return el.dataset.ms || CURQ; }
 /* marcações: [início, fim, cor?]; anotações de texto: {id, o (posição no texto), t} — nenhuma altera o texto original */
 function paintEl(el, ranges, notes){
   if(!H0.has(el)) H0.set(el, el.innerHTML);
-  const has = (ranges && ranges.length) || (notes && notes.length);
+  const has = (ranges && ranges.length) || (notes && notes.some(z => !z.f));
   if(!has && !el._hl) return;
   el.innerHTML = H0.get(el); el._hl = false;
   if(!has) return;
@@ -1964,7 +1976,7 @@ function paintEl(el, ranges, notes){
       t.replaceWith(fr);
     }
   }
-  for(const n of (notes || []).slice().sort((x, y) => y.o - x.o)){
+  for(const n of (notes || []).filter(z => !z.f).slice().sort((x, y) => y.o - x.o)){
     let pos = 0, done = false;
     const chip = document.createElement('span'); chip.className = 'tn'; chip.dataset.tn = n.id; chip.dataset.t = n.t; chip.title = 'Toque para editar';
     for(const t of texts()){
@@ -1978,10 +1990,11 @@ function paintEl(el, ranges, notes){
 }
 function inkAnchor(el){ return getComputedStyle(el).display === 'inline' ? el.parentElement : el; }
 function paintMarks(){
-  document.querySelectorAll('#view [data-mk]').forEach(el => { const sc = markScope(el); if(!sc) return; const k = el.dataset.mk; paintEl(el, (S.marks[sc] || {})[k], ((S.tnotes || {})[sc] || {})[k]); });
-  paintInk();
+  document.querySelectorAll('#view [data-mk]').forEach(el => { try{ const sc = markScope(el); if(!sc) return; const k = el.dataset.mk; paintEl(el, (S.marks[sc] || {})[k], ((S.tnotes || {})[sc] || {})[k]); }catch(err){ console.warn('marca', err); } });
+  try{ paintInk(); }catch(err){ console.warn('tinta', err); }
+  try{ paintFn(); }catch(err){ console.warn('nota', err); }
 }
-let inkRT; window.addEventListener('resize', () => { clearTimeout(inkRT); inkRT = setTimeout(paintInk, 150); });
+let inkRT; window.addEventListener('resize', () => { clearTimeout(inkRT); inkRT = setTimeout(() => { try{ paintInk(); paintFn(); }catch(err){} }, 150); });
 function offsetIn(el, node, off){ const r = document.createRange(); r.setStart(el, 0); r.setEnd(node, off); return r.toString().length; }
 
 /* ferramentas: marca-texto (padrão amarelo), texto e caneta */
@@ -2001,7 +2014,7 @@ function colsHTML(){
 function hlBtn(){
   return `<div class="tbx" role="toolbar" aria-label="Ferramentas de marcação">
     <button type="button" class="tb hlbtn" data-tool="hl" aria-pressed="${TOOL === 'hl'}" title="Marca-texto: selecione o trecho e ele é marcado; toque na marcação para apagar">${HL_ICON}<span>Marca-texto</span></button>
-    <button type="button" class="tb" data-tool="txt" aria-pressed="${TOOL === 'txt'}" title="Texto: toque num ponto do texto para escrever uma observação ali">${TXT_ICON}</button>
+    <button type="button" class="tb" data-tool="txt" aria-pressed="${TOOL === 'txt'}" title="Texto: clique/toque em qualquer ponto para escrever uma anotação ali">${TXT_ICON}</button>
     <button type="button" class="tb" data-tool="pen" aria-pressed="${TOOL === 'pen'}" title="Caneta: desenhe para circular; toque perto de um traço para apagar">${PEN_ICON}</button>
     <button type="button" class="tb" data-tool="eraser" aria-pressed="${TOOL === 'eraser'}" title="Borracha: passe por cima dos traços para apagar">${ERASER_ICON}</button>
     <span class="tb-cols">${colsHTML()}</span>
@@ -2016,10 +2029,10 @@ function syncTools(){
 }
 function setTool(t, quiet){
   TOOL = t; HL_MODE = t === 'hl'; lsSet('psumg_hlmode', HL_MODE ? '1' : '0');
-  syncTools(); hideBar(); closeTn(true); if(typeof checkFloat === 'function') checkFloat();
+  syncTools(); hideBar(); closeTn(true); if(typeof closeFn === 'function') closeFn(true); if(typeof checkFloat === 'function') checkFloat();
   if(quiet) return;
   if(t === 'hl') toast('Marca-texto ligado: selecione o trecho para marcar; toque na marcação para apagar.');
-  if(t === 'txt') toast('Texto: toque no ponto da explicação onde quer escrever.');
+  if(t === 'txt') toast('Texto: clique ou toque em qualquer ponto para escrever ali. Enter salva; × apaga.');
   if(t === 'pen') toast(STYLUS ? 'Caneta: escreva com a caneta; o dedo e a palma não riscam (o dedo rola a página). Toque perto de um traço para apagar.' : 'Caneta: desenhe para circular. Toque perto de um traço para apagar.');
   if(t === 'eraser') toast('Borracha: passe por cima dos traços que quer apagar.');
 }
@@ -2136,6 +2149,114 @@ function tnOffset(host, ca){
   return o;
 }
 
+/* ---------- anotação flutuante (modo Texto) ---------- */
+let fnCur = null; /* {sc, k, id, box} */
+function fnLayer(){
+  const v = document.getElementById('view'); if(!v) return null;
+  if(getComputedStyle(v).position === 'static') v.style.position = 'relative';
+  let L = v.querySelector(':scope > .fn-layer');
+  if(!L){ L = document.createElement('div'); L.className = 'fn-layer'; v.appendChild(L); }
+  return L;
+}
+/* âncora da nota: o bloco de texto (data-mk) onde se tocou; fora do texto, a explicação ou a página */
+function fnAnchorOf(target){
+  const host = target.closest && target.closest('#view [data-mk]');
+  if(host && markScope(host)) return {sc: markScope(host), k: host.dataset.mk, el: inkAnchor(host)};
+  if(!CURQ) return null;
+  const fb = target.closest && target.closest('#view .fb'); if(fb) return {sc: CURQ, k: '@fb', el: fb};
+  const v = document.getElementById('view'); return v ? {sc: CURQ, k: '@pg', el: v} : null;
+}
+function fnFind(sc, k){
+  if(k === '@fb') return document.querySelector('#view .fb');
+  if(k === '@pg') return document.getElementById('view');
+  for(const el of document.querySelectorAll('#view [data-mk]')) if(el.dataset.mk === k && markScope(el) === sc) return inkAnchor(el);
+  return null;
+}
+function fnPaintOne(L, LR, sc, k, n){
+  const an = fnFind(sc, k); if(!an) return null;
+  const R = an.getBoundingClientRect(); if(!R.width) return null;
+  const s = R.width / (n.w || R.width);
+  const box = document.createElement('div'); box.className = 'fn'; box.dataset.id = n.id; box.dataset.sc = sc; box.dataset.k = k;
+  box.innerHTML = '<div class="fn-t"></div><button type="button" class="fn-x" title="Apagar anotação" aria-label="Apagar anotação">×</button>';
+  box.firstChild.textContent = n.t || '';
+  box.style.left = Math.round(R.left - LR.left + n.x * s) + 'px';
+  box.style.top = Math.round(R.top - LR.top + n.y * s) + 'px';
+  L.appendChild(box);
+  /* não deixa a caixa sair pela direita da tela (a posição salva não muda) */
+  const br = box.getBoundingClientRect(); if(br.right > innerWidth - 6) box.style.left = Math.max(4, parseFloat(box.style.left) - (br.right - innerWidth + 6)) + 'px';
+  return box;
+}
+function paintFn(){
+  const L = fnLayer(); if(!L) return;
+  if(fnCur) return; /* não redesenha enquanto você escreve */
+  L.innerHTML = '';
+  const LR = L.getBoundingClientRect();
+  const seen = new Set();
+  const scopes = new Set([...document.querySelectorAll('#view [data-mk]')].map(el => markScope(el)).filter(Boolean)); if(CURQ) scopes.add(CURQ);
+  for(const sc of scopes){
+    const a = (S.tnotes || {})[sc]; if(!a) continue;
+    for(const k of Object.keys(a)) for(const n of a[k] || []){
+      if(!n.f || seen.has(n.id)) continue; seen.add(n.id);
+      fnPaintOne(L, LR, sc, k, n);
+    }
+  }
+}
+function fnCreate(e){
+  const an = fnAnchorOf(e.target); if(!an){ toast('Toque sobre a questão ou a explicação para anotar.'); return; }
+  closeFn(true);
+  const R = an.el.getBoundingClientRect();
+  const n = {id: newImgId().slice(0, 8), f: 1, x: Math.round(e.clientX - R.left), y: Math.round(e.clientY - R.top), w: Math.round(R.width) || 1, t: ''};
+  tnList(an.sc, an.k).push(n);
+  const L = fnLayer(); const box = fnPaintOne(L, L.getBoundingClientRect(), an.sc, an.k, n);
+  if(box) fnEdit(box);
+}
+function fnEdit(box){
+  if(fnCur && fnCur.box === box) return;
+  closeFn(true);
+  const t = box.querySelector('.fn-t');
+  box.classList.add('editing'); t.contentEditable = 'true'; t.spellcheck = true;
+  fnCur = {sc: box.dataset.sc, k: box.dataset.k, id: box.dataset.id, box};
+  t.addEventListener('keydown', ev => {
+    ev.stopPropagation();
+    if(ev.key === 'Enter' && ev.shiftKey){ ev.preventDefault(); document.execCommand('insertLineBreak'); return; }
+    if(ev.key === 'Enter' && !ev.isComposing){ ev.preventDefault(); closeFn(true); }
+    if(ev.key === 'Escape'){ ev.preventDefault(); closeFn(true); }
+  });
+  t.addEventListener('paste', ev => { ev.preventDefault(); const s = ev.clipboardData && ev.clipboardData.getData('text/plain'); if(s) document.execCommand('insertText', false, s); });
+  t.focus({preventScroll: true});
+  const r = document.createRange(); r.selectNodeContents(t); r.collapse(false); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+}
+function closeFn(save_, del){
+  if(!fnCur) return;
+  const c = fnCur; fnCur = null;
+  try{
+    const list = tnList(c.sc, c.k), i = list.findIndex(z => z.id === c.id);
+    const txt = (c.box.querySelector('.fn-t').innerText || '').replace(/\n{3,}/g, '\n\n').trim();
+    if(i >= 0){ if(del || !txt) list.splice(i, 1); else if(save_) list[i].t = txt; }
+    tnCleanup(c.sc, c.k); save();
+  }catch(err){ console.warn('nota', err); }
+  try{ getSelection().removeAllRanges(); }catch(err){}
+  paintFn();
+}
+function fnDelete(box){
+  if(fnCur && fnCur.box === box){ closeFn(false, true); return; }
+  const list = tnList(box.dataset.sc, box.dataset.k), i = list.findIndex(z => z.id === box.dataset.id);
+  if(i >= 0) list.splice(i, 1); tnCleanup(box.dataset.sc, box.dataset.k); save(); paintFn();
+}
+/* tocar fora da caixa salva e fecha (sem bloquear o clique em mais nada) */
+document.addEventListener('pointerdown', e => { if(fnCur && !(e.target.closest && e.target.closest('.fn.editing'))) closeFn(true); }, true);
+document.addEventListener('click', e => {
+  if(!e.target.closest) return;
+  const x = e.target.closest('#view .fn-x'); if(x){ e.preventDefault(); e.stopPropagation(); fnDelete(x.closest('.fn')); return; }
+  const box = e.target.closest('#view .fn');
+  if(box && TOOL !== 'pen' && TOOL !== 'eraser'){ e.stopPropagation(); if(!box.classList.contains('editing')) fnEdit(box); }
+}, true);
+/* trocar de página/questão: salva o que estava escrevendo */
+new MutationObserver(() => { if(fnCur && !document.body.contains(fnCur.box)){ const c = fnCur; fnCur = null; try{ const list = tnList(c.sc, c.k), i = list.findIndex(z => z.id === c.id); const txt = (c.box.querySelector('.fn-t').innerText || '').trim(); if(i >= 0){ if(txt) list[i].t = txt; else list.splice(i, 1); } tnCleanup(c.sc, c.k); save(); }catch(err){} } }).observe(document.getElementById('view'), {childList: true});
+/* imagens que terminam de carregar ou seções que abrem mudam as posições: reposiciona as notas */
+let fnRT; const fnLater = () => { clearTimeout(fnRT); fnRT = setTimeout(() => { try{ paintFn(); }catch(err){} }, 120); };
+document.addEventListener('load', e => { if(e.target.tagName === 'IMG' && e.target.closest && e.target.closest('#view')) fnLater(); }, true);
+document.addEventListener('toggle', e => { if(e.target.closest && e.target.closest('#view')) fnLater(); }, true);
 /* cliques: anotação de texto > ferramenta ativa > marcação */
 document.addEventListener('click', e => {
   if(!e.target.closest) return;
@@ -2145,14 +2266,10 @@ document.addEventListener('click', e => {
     e.stopPropagation(); e.preventDefault();
     const host = chip.closest('[data-mk]'); editTn(markScope(host), host.dataset.mk, chip.dataset.tn); return;
   }
-  if(TOOL === 'txt' && e.target.closest('#view') && !e.target.closest('.tbx,button,input,textarea,[contenteditable],.note-wrap,a')){
-    const ca = caretAt(e.clientX, e.clientY); if(!ca || !ca.node) return;
-    const host = (ca.node.nodeType === 1 ? ca.node : ca.node.parentElement).closest('[data-mk]');
-    if(!host || !host.closest('#view') || !markScope(host)) return;
+  if(e.target.closest('#view .fn')) return;
+  if(TOOL === 'txt' && e.target.closest('#view') && !e.target.closest('.tbx,.tb-float,button,input,textarea,select,label,[contenteditable],.note-wrap,a,.alt') && !hasSel()){
     e.stopPropagation(); e.preventDefault();
-    const sc = markScope(host), k = host.dataset.mk, id = newImgId().slice(0, 8);
-    tnList(sc, k).push({id, o: tnOffset(host, ca), t: ''});
-    paintMarks(); editTn(sc, k, id);
+    try{ fnCreate(e); }catch(err){ console.warn('nota', err); }
     return;
   }
   if((TOOL === 'pen' || TOOL === 'eraser') && e.target.closest('#view [data-mk], #view .ink-ov, #view .stem, #view .ctx, #view .alt, #view .rv-body, #view .fb')){ e.stopPropagation(); e.preventDefault(); return; }
