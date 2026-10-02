@@ -550,12 +550,12 @@ body.hlmode #view ::selection{background:rgba(255,213,79,.55);color:inherit}
 /* ====== FIREBASE: cole aqui a configuração do seu projeto (Console do Firebase → Configurações do projeto → Seus apps → SDK config).
    Deixe null para usar só neste aparelho. ====== */
 window.FIREBASE_CONFIG = {
-  apiKey: "AIzaSyDQ1czpJjDYmoNFE86jRPlvtvjiGG3BnVY",
-  authDomain: "banco-de-questoes-uerj.firebaseapp.com",
-  projectId: "banco-de-questoes-uerj",
-  storageBucket: "banco-de-questoes-uerj.firebasestorage.app",
-  messagingSenderId: "1090581775571",
-  appId: "1:1090581775571:web:9635ba8554ef6e78d34026"
+  apiKey: "AIzaSyDMK440_JM1zzh8EVMRSJHBIQ_pbVE9Xuk",
+  authDomain: "banco-de-questoes-psu-mg.firebaseapp.com",
+  projectId: "banco-de-questoes-psu-mg",
+  storageBucket: "banco-de-questoes-psu-mg.firebasestorage.app",
+  messagingSenderId: "838740222440",
+  appId: "1:838740222440:web:42b3a3728b91807b95445d"
 };
 </script>
 
@@ -623,8 +623,8 @@ const Cloud = {
     }catch(e){ console.warn('Firebase indisponível', e); this.ok = false; }
     return this.ok;
   },
-  ref(){ return this.db.collection('usuarios').doc('psumg.' + USER); },
-  imgRef(id){ const k = 'psumg.' + USER + '..img.' + id; return k.length <= 40 ? this.db.collection('usuarios').doc(k) : null; },
+  ref(){ return this.db.collection('usuarios').doc(USER); },
+  imgRef(id){ const k = USER + '..img.' + id; return k.length <= 40 ? this.db.collection('usuarios').doc(k) : null; },
   imgQ(){ try{ return JSON.parse(lsGet('psumg_imgq:' + USER) || '[]'); }catch(e){ return []; } },
   putImg(id){ const q = this.imgQ(); if(!q.includes(id)) q.push(id); lsSet('psumg_imgq:' + USER, JSON.stringify(q)); this.syncImgs(); },
   async syncImgs(){

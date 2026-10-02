@@ -1,5 +1,5 @@
 /* Banco PSU-MG: service worker (abre offline e se atualiza sozinho) */
-const CACHE = 'banco-psumg-v1';
+const CACHE = 'banco-psumg-v2';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
