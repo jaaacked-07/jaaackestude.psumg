@@ -2196,7 +2196,7 @@ function paintFn(){
   for(const sc of scopes){
     const a = (S.tnotes || {})[sc]; if(!a) continue;
     for(const k of Object.keys(a)) for(const n of a[k] || []){
-      if(!n.f || seen.has(n.id)) continue; seen.add(n.id);
+      if(!n.f || seen.has(n.id) || !(n.t || '').trim()) continue; seen.add(n.id);
       fnPaintOne(L, LR, sc, k, n);
     }
   }
@@ -2208,7 +2208,7 @@ function fnCreate(e){
   const n = {id: newImgId().slice(0, 8), f: 1, x: Math.round(e.clientX - R.left), y: Math.round(e.clientY - R.top), w: Math.round(R.width) || 1, t: ''};
   tnList(an.sc, an.k).push(n);
   const L = fnLayer(); const box = fnPaintOne(L, L.getBoundingClientRect(), an.sc, an.k, n);
-  if(box) fnEdit(box);
+  if(box) fnEdit(box); else { const l = tnList(an.sc, an.k); l.splice(l.indexOf(n), 1); tnCleanup(an.sc, an.k); }
 }
 function fnEdit(box){
   if(fnCur && fnCur.box === box) return;
